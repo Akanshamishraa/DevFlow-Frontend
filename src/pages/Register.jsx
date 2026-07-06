@@ -9,7 +9,7 @@ const Register =()=>{
         try{
             
         } catch (error) {
-            console.error('Error during registration:', error);
+            console.error('Error during registrationm:', error);
         }
     };
     return (
