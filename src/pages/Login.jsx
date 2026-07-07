@@ -2,8 +2,10 @@ import react from 'react';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
 import 'react-toastify/dist/ReactToastify.css';
 const Login = () => {
+    const navigate = useNavigate();
     const [email, Setemail] = useState('');
     const [password, Setpassword] = useState('');
     const handlesubmit = async(e) => {
@@ -22,6 +24,7 @@ const Login = () => {
             console.log("login successful:", data);
             localStorage.setItem('token', data.token);
             toast.success("Login successful!");
+               navigate('/dashboard'); 
         }else{
             toast.error(data.message || "Login failed");
         }
