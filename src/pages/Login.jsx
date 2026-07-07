@@ -1,5 +1,8 @@
 import react from 'react';
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 const Login = () => {
     const [email, Setemail] = useState('');
     const [password, Setpassword] = useState('');
@@ -18,10 +21,9 @@ const Login = () => {
         if(response.ok){
             console.log("login successful:", data);
             localStorage.setItem('token', data.token);
-         alert("login succesfull");
+            toast.success("Login successful!");
         }else{
-            alert(data.message|| "login failed");
-
+            toast.error(data.message || "Login failed");
         }
      } catch(error){
             console.error("Error during login:", error);
@@ -61,9 +63,17 @@ const Login = () => {
                         Sign In
                     </button>
                 </form>
-
+                
+                <p className="text-slate-400 text-center text-sm mt-6">
+                    Don't have an account?{' '}
+                    <Link to="/register" className="text-blue-500 hover:underline font-medium">
+                        Sign Up
+                    </Link>
+                </p>
             </div>
+            <ToastContainer theme="dark" />
         </div>
+
 
     );
 

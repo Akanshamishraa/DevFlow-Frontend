@@ -1,7 +1,8 @@
 import react from "react";
 import{useState,useEffect} from "react";
 import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css'; 
+import 'react-toastify/dist/ReactToastify.css';
+import { Link } from 'react-router-dom';
 const Register =()=>{
     const [username,SetUsername]=useState('');
     const[email,setemail]=useState('');
@@ -77,6 +78,13 @@ const Register =()=>{
                         Sign Up
                     </button>
                 </form>
+                
+                <p className="text-slate-400 text-center text-sm mt-6">
+                    Already have an account?{' '}
+                    <Link to="/login" className="text-blue-500 hover:underline font-medium">
+                        Sign In
+                    </Link>
+                </p>
             </div> 
             <ToastContainer theme="dark" />
         </div>
