@@ -3,6 +3,7 @@ import{useState,useEffect} from "react";
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Link } from 'react-router-dom';
+import { API_BASE_URL } from '../config/api.js';
 const Register =()=>{
     const [username,SetUsername]=useState('');
     const[email,setemail]=useState('');
@@ -10,7 +11,7 @@ const Register =()=>{
     const handlesubmit = async(e)=>{
         e.preventDefault();
         try{
-            const response = await fetch("http://localhost:5000/api/auth/register",{
+            const response = await fetch(`${API_BASE_URL}/api/auth/register`,{
                 method:'POST',
                 headers:{
                     "content-Type":"application/json",

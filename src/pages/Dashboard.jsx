@@ -1,32 +1,85 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../config/api.js';
 
 const Dashboard = () => {
     const navigate = useNavigate();
     const [user, setUser] = useState({ username: 'Developer', email: '' });
+    const[workspaces, setWorkspaces] = useState([]);
 
   
     useEffect(() => {
+         const fetchUserProfile = async () => {
         const token = localStorage.getItem('token');
         if (!token) {
             navigate('/login');
-        } else {
-            // Fake user data for display (later we will fetch it from backend!)
-            setUser({ username: 'Akansha', email: 'ak.akanshamishra@gmail.com' });
+            return;
+        } 
+        try{
+            const response = await fetch (`${API_BASE_URL}/api/auth/profile`,{
+                method:'GET',
+                headers:{
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            const data = await response.json();
+            if(response.ok){
+                setUser({username:data.username,email:data.email})
+            }else{
+                localStorage.removeItem('token');
+                navigate('/login');
+            }
+        }catch (error){
+            console.error("Error fetching user profile:", error);
         }
-    }, [navigate]);
+    }; 
+    fetchUserProfile()
+
+        } ,[navigate]);
 
     const handleLogout = () => {
         localStorage.removeItem('token');
         navigate('/login');
     };
 
+    useEffect(()=>{
+        const fetchWorkspace = async()=>{
+            const token = localStorage.getItem('token');
+            if(!token){
+                   navigate('/login');
+            return;
+        } 
+        try{
+            const response = await  fetch (`${API_BASE_URL}/api/workspace`,{
+                method :'GET',
+                    headers:{
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            const data = await response.json();
+            if(response.ok){
+                  setWorkspaces(data.workspaces); 
+
+            }
+        }
+        catch  (error) {
+            console.error("Error fetching user profile:", error);
+
+        }
+    };
+    
+          fetchWorkspace(); 
+    }, [navigate]);
+
+            
+
+
     // Dummy workspaces to show the UI grid
-    const dummyWorkspaces = [
-        { id: 1, name: "🚀 Personal Portfolio", description: "Tasks and boards for my personal projects and coding roadmap.", cardsCount: 8 },
-        { id: 2, name: "🎓 College Capstone", description: "Collaborative workspace for final semester group project.", cardsCount: 12 },
-        { id: 3, name: "💡 Startup Idea", description: "Product roadmap, market research, and design drafts.", cardsCount: 4 }
-    ];
+    // const dummyWorkspaces = [
+    //     { id: 1, name: "🚀 Personal Portfolio", description: "Tasks and boards for my personal projects and coding roadmap.", cardsCount: 8 },
+    //     { id: 2, name: "🎓 College Capstone", description: "Collaborative workspace for final semester group project.", cardsCount: 12 },
+    //     { id: 3, name: "💡 Startup Idea", description: "Product roadmap, market research, and design drafts.", cardsCount: 4 }
+    // ];
 
     return (
         <div className="min-h-screen bg-slate-950 text-white flex">
@@ -86,26 +139,33 @@ const Dashboard = () => {
 
                 {/* Grid Layout for Workspaces */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {dummyWorkspaces.map(ws => (
+                    {workspaces.length===0?(
+                                                <div className="col-span-full py-16 px-6 text-center bg-slate-900/40 rounded-2xl border border-dashed border-slate-800/80">
+                            <p className="text-slate-400 text-lg font-medium mb-1">No workspaces found</p>
+                            <p className="text-slate-500 text-xs">Create a new workspace to start collaboration</p>
+                        </div>
+
+                    ):
+                    (workspaces.map(ws => (
                         <div 
-                            key={ws.id}
+                            key={ws._id}
                             className="bg-slate-900 border border-slate-800/80 p-6 rounded-2xl hover:border-blue-500/50 hover:shadow-xl hover:shadow-blue-500/5 transition-all group cursor-pointer"
                         >
                             <h3 className="text-lg font-bold group-hover:text-blue-400 transition-colors mb-2">
                                 {ws.name}
                             </h3>
                             <p className="text-slate-400 text-xs leading-relaxed mb-6 line-clamp-2">
-                                {ws.description}
+                                {ws.description || "No description provided"}
                             </p>
                             
                             <div className="flex items-center justify-between text-xs text-slate-500 border-t border-slate-800/50 pt-4">
-                                <span>📋 {ws.cardsCount} cards</span>
+                                <span>📋 {ws.members?.length || 1} members</span>
                                 <span className="text-blue-500 font-semibold group-hover:translate-x-1 transition-transform">
                                     Open Workspace →
                                 </span>
                             </div>
                         </div>
-                    ))}
+                    )))}
                 </div>
             </main>
 

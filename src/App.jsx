@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'; // Router hooks import kiye
+import { BrowserRouter as Router, Routes, Route , Navigate} from 'react-router-dom'; // Router hooks import kiye
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -6,7 +6,8 @@ import Dashboard from './pages/Dashboard';
 function App() {
   return (
     <Router>  
-      <Routes>     
+      <Routes>   
+        <Route path="/" element={<Navigate to="/login" replace />} />  
         {/* <Route path="/" element={<Dashboard />} /> */}
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/login" element={<Login />} />
