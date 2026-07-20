@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../config/api.js';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const Dashboard = () => {
     const navigate = useNavigate();
     const [user, setUser] = useState({ username: 'Developer', email: '' });
     const[workspaces, setWorkspaces] = useState([]);
+    const[isModalOpen,setIsModalOpen]=useState(false);
+     const [newWorkspaceName, setNewWorkspaceName] = useState('');
+       const [newWorkspaceDesc, setNewWorkspaceDesc] = useState('');
+
 
   
     useEffect(() => {
@@ -41,7 +47,36 @@ const Dashboard = () => {
         localStorage.removeItem('token');
         navigate('/login');
     };
-
+     const handleCreateWorkspace=async (e)=>{
+        e.preventDefault();
+        const token= localStorage.getItem('token');
+        try{
+            const response = await fetch(`${API_BASE_URL}/api/workspace`,{
+                method:'POST',
+                headers:{
+                    'Content-Type':'application/json',
+                    'Authorization':`Bearer ${token}`
+                },
+                body:JSON.stringify({
+                       name: newWorkspaceName,
+                    description: newWorkspaceDesc
+                })
+            });
+       const data = await response.json();
+            if (response.ok) {
+                setWorkspaces([data.workspace, ...workspaces]);
+                setNewWorkspaceName('');
+                setNewWorkspaceDesc('');
+                setIsModalOpen(false);
+                toast.success("Workspace created successfully!");
+            } else {
+                toast.error(data.message || "Failed to create workspace");
+            }
+        } catch (error) {
+            console.error("Error creating workspace:", error);
+            toast.error("Error connecting to server");
+        }
+    };
     useEffect(()=>{
         const fetchWorkspace = async()=>{
             const token = localStorage.getItem('token');
@@ -70,16 +105,6 @@ const Dashboard = () => {
     
           fetchWorkspace(); 
     }, [navigate]);
-
-            
-
-
-    // Dummy workspaces to show the UI grid
-    // const dummyWorkspaces = [
-    //     { id: 1, name: "🚀 Personal Portfolio", description: "Tasks and boards for my personal projects and coding roadmap.", cardsCount: 8 },
-    //     { id: 2, name: "🎓 College Capstone", description: "Collaborative workspace for final semester group project.", cardsCount: 12 },
-    //     { id: 3, name: "💡 Startup Idea", description: "Product roadmap, market research, and design drafts.", cardsCount: 4 }
-    // ];
 
     return (
         <div className="min-h-screen bg-slate-950 text-white flex">
@@ -132,9 +157,73 @@ const Dashboard = () => {
                     </div>
                     
                     {/* Create Workspace Button */}
-                    <button className="bg-blue-600 hover:bg-blue-500 active:scale-95 transition-all text-white font-semibold py-2.5 px-5 rounded-xl shadow-lg shadow-blue-500/20 text-sm">
+                    <button 
+                        onClick={() => setIsModalOpen(true)}
+                        className="bg-blue-600 hover:bg-blue-500 active:scale-95 transition-all text-white font-semibold py-2.5 px-5 rounded-xl shadow-lg shadow-blue-500/20 text-sm"
+                    >
                         + New Workspace
                     </button>
+              {isModalOpen && (
+                <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    
+                    {/* B. Modal Form Card */}
+                    <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl w-full max-w-md shadow-2xl relative">
+                        
+                        <h3 className="text-2xl font-bold text-white mb-2">Create New Workspace</h3>
+                        <p className="text-sm text-slate-400 mb-6">Create a shared space for your boards and notes.</p>
+                        
+                        <form onSubmit={handleCreateWorkspace}>
+                            {/* Input: Name */}
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-slate-300 mb-2">
+                                    Workspace Name
+                                </label>
+                                <input 
+                                    type="text"
+                                    value={newWorkspaceName}
+                                    onChange={(e) => setNewWorkspaceName(e.target.value)}
+                                    className="w-full bg-slate-950 text-slate-100 placeholder:text-slate-600 border border-slate-800 rounded-xl px-4 py-2.5 focus:border-blue-500 focus:outline-none transition-colors"
+                                    placeholder="e.g. Marketing Team"
+                                    required
+                                />
+                            </div>
+                            {/* Input: Description */}
+                            <div className="mb-6">
+                                <label className="block text-sm font-medium text-slate-300 mb-2">
+                                    Description (Optional)
+                                </label>
+                                <textarea 
+                                    value={newWorkspaceDesc}
+                                    onChange={(e) => setNewWorkspaceDesc(e.target.value)}
+                                    className="w-full bg-slate-950 text-slate-100 placeholder:text-slate-600 border border-slate-800 rounded-xl px-4 py-2.5 focus:border-blue-500 focus:outline-none transition-colors h-24 resize-none"
+                                    placeholder="What is this workspace about?"
+                                />
+                            </div>
+                            {/* Buttons footer */}
+                            <div className="flex gap-3 justify-end">
+                                <button 
+                                    type="button"
+                                    onClick={() => {
+                                        setIsModalOpen(false);
+                                        setNewWorkspaceName('');
+                                        setNewWorkspaceDesc('');
+                                    }}
+                                    className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 active:scale-95 transition-all text-slate-300 text-sm font-medium rounded-xl"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit"
+                                    className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 active:scale-95 transition-all text-white text-sm font-medium rounded-xl shadow-lg shadow-blue-500/20"
+                                >
+                                    Create
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
                 </div>
 
                 {/* Grid Layout for Workspaces */}
@@ -169,6 +258,7 @@ const Dashboard = () => {
                 </div>
             </main>
 
+            <ToastContainer theme="dark" />
         </div>
     );
 };
