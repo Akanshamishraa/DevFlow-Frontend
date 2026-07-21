@@ -238,6 +238,7 @@ const Dashboard = () => {
                     (workspaces.map(ws => (
                         <div 
                             key={ws._id}
+                             onClick={() => navigate(`/workspace/${ws._id}`)} 
                             className="bg-slate-900 border border-slate-800/80 p-6 rounded-2xl hover:border-blue-500/50 hover:shadow-xl hover:shadow-blue-500/5 transition-all group cursor-pointer"
                         >
                             <h3 className="text-lg font-bold group-hover:text-blue-400 transition-colors mb-2">
