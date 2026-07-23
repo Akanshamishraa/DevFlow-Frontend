@@ -21,6 +21,8 @@ const Workspace = () => {
 
     const [isColModalOpen, setIsColModalOpen] = useState(false);
     const [newColTitle, setNewColTitle] = useState('');
+     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+    const [inviteEmail, setInviteEmail] = useState('');
 
     const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
     const [selectedColId, setSelectedColId] = useState(null);
@@ -254,7 +256,38 @@ const Workspace = () => {
         });
     };
 
-    // 3B. Actual Delete API Fetch Request
+       // 3D. Invite Member to Workspace API Request
+    const handleInviteMember = async (e) => {
+        e.preventDefault();
+        if (!inviteEmail.trim()) return;
+        const token = localStorage.getItem('token');
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/workspace/${id}/invite`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ email: inviteEmail })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                // Local state update: Append the newly added member to workspace's members list
+                setWorkspace({
+                    ...workspace,
+                    members: [...(workspace.members || []), data.member]
+                });
+                setInviteEmail('');
+                setIsInviteModalOpen(false);
+                toast.success("Member added to workspace successfully");
+            } else {
+                toast.error(data.message || "Failed to add member");
+            }
+        } catch (error) {
+            console.error("Error inviting member:", error);
+            toast.error("Something went wrong");
+        }
+    };
     const performDeleteTask = async (taskId, columnId) => {
         const token = localStorage.getItem('token');
         try {
@@ -328,6 +361,54 @@ const Workspace = () => {
             console.error("Error loading document:", error);
         }
     };
+      
+    const handleToggleTaskComplete = async (task, currentColumnId) => {
+        if (columns.length === 0) return;
+        
+        const todoColumnId = columns[0]._id;
+        const completedColumnId = columns[columns.length - 1]._id; 
+        const isCurrentlyCompleted = currentColumnId === completedColumnId;
+        const newColumnId = isCurrentlyCompleted ? todoColumnId : completedColumnId;
+        
+        const token = localStorage.getItem('token');
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/task/${task._id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ columnId: newColumnId })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                
+                setColumns(columns.map(col => {
+                    if (col._id === currentColumnId) {
+                        return {
+                            ...col,
+                            tasks: col.tasks.filter(t => t._id !== task._id)
+                        };
+                    }
+                    if (col._id === newColumnId) {
+                        return {
+                            ...col,
+                            tasks: [...(col.tasks || []), data.task]
+                        };
+                    }
+                    return col;
+                }));
+                
+                if (isCurrentlyCompleted) {
+                    toast.info("Task moved back to To Do!");
+                } else {
+                    toast.success("Task marked as completed!");
+                }
+            }
+        } catch (error) {
+            console.error("Error toggling task completion:", error);
+        }
+    };
 
     const handleSaveDocument = async () => {
         if (!activeDoc) return;
@@ -396,7 +477,7 @@ const Workspace = () => {
                                         key={b._id}
                                         onClick={() => {
                                             setActiveBoard(b);
-                                            setActiveDoc(null); // Close document view if open
+                                            setActiveDoc(null); 
                                         }}
                                         className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors text-left ${
                                             activeBoard?._id === b._id 
@@ -441,8 +522,43 @@ const Workspace = () => {
                                 ))}
                             </div>
                         )}
+                        
                     </div>
+                                     {/* D. MEMBERS SECTION */}
+                 <div className="mt-6">
+                     <div className="flex items-center justify-between text-slate-500 text-xs font-semibold tracking-wider mb-3">
+                         <span>MEMBERS</span>
+                         {/* Open Invite Modal */}
+                         <button 
+                             onClick={() => setIsInviteModalOpen(true)}
+                             className="text-slate-400 hover:text-blue-500 transition-colors text-sm font-bold"
+                         >
+                             +
+                         </button>
+                     </div>
+                     {(!workspace?.members || workspace.members.length === 0) ? (
+                         <p className="text-xs text-slate-600 italic px-2">No members</p>
+                     ) : (
+                         <div className="space-y-1">
+                             {workspace.members.map(member => (
+                                 <div 
+                                     key={member._id}
+                                     className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400"
+                                     title={member.email}
+                                 >
+                                     {/* Dynamic Name Initials badge */}
+                                     <div className="w-5 h-5 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center text-[10px] font-bold">
+                                         {member.name ? member.name[0].toUpperCase() : 'U'}
+                                     </div>
+                                     <span className="truncate">{member.name}</span>
+                                 </div>
+                             ))}
+                         </div>
+                     )}
+                 </div>
+                    
                 </div>
+                
 
                 {/* D. Bottom Profile Widget*/}
                 <div className="border-t border-slate-800 pt-6">
@@ -533,7 +649,23 @@ const Workspace = () => {
                                                         🗑️
                                                     </button>
 
-                                                    <h4 className="text-xs font-bold text-slate-200 truncate">{task.title}</h4>
+                                                      <div className="flex items-center gap-2 mb-1">
+                                                    {/* Dynamic Checkbox */}
+                                                    <input 
+                                                        type="checkbox"
+                                                        checked={col._id === columns[columns.length - 1]?._id}
+                                                        onChange={() => handleToggleTaskComplete(task, col._id)}
+                                                        onClick={(e) => e.stopPropagation()} 
+                                                        className="w-3.5 h-3.5 rounded border-slate-800 bg-transparent text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                    />
+                                                    
+                                                    {/* Cross-through line when checked */}
+                                                    <h4 className={`text-xs font-bold text-slate-100 truncate ${
+                                                        col._id === columns[columns.length - 1]?._id ? 'line-through text-slate-500' : ''
+                                                    }`}>
+                                                        {task.title}
+                                                    </h4>
+                                                </div>
                                                     {task.description && (
                                                         <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">{task.description}</p>
                                                     )}
@@ -595,8 +727,6 @@ const Workspace = () => {
                 )}
             </main>
 
-            {/* === MODAL OVERLAYS === */}
-
             {/* 1. Create Board Modal */}
             {isBoardModalOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
@@ -650,7 +780,7 @@ const Workspace = () => {
                                 value={newColTitle}
                                 onChange={(e) => setNewColTitle(e.target.value)}
                                 className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg px-3 py-2 text-sm text-white focus:outline-none transition-colors"
-                                placeholder="e.g. 🎯 Testing"
+                                placeholder="e.g. Testing"
                                 required
                             />
                         </div>
@@ -768,6 +898,43 @@ const Workspace = () => {
                                 className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg transition-colors"
                             >
                                 Create Document
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )    }
+                    {/* 5. Invite Member Modal */}
+            {isInviteModalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+                    <form 
+                        onSubmit={handleInviteMember}
+                        className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-96 shadow-2xl flex flex-col gap-4"
+                    >
+                        <h3 className="text-lg font-bold text-slate-200">Invite Member</h3>
+                        <div>
+                            <label className="text-xs text-slate-400 block mb-1">User Email Address</label>
+                            <input 
+                                type="email"
+                                value={inviteEmail}
+                                onChange={(e) => setInviteEmail(e.target.value)}
+                                className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg px-3 py-2 text-sm text-white focus:outline-none transition-colors"
+                                placeholder="e.g. collaborator@example.com"
+                                required
+                            />
+                        </div>
+                        <div className="flex gap-2 justify-end mt-2">
+                            <button 
+                                type="button"
+                                onClick={() => setIsInviteModalOpen(false)}
+                                className="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs font-semibold rounded-lg transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                type="submit"
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg transition-colors"
+                            >
+                                Send Invite
                             </button>
                         </div>
                     </form>
