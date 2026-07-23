@@ -34,6 +34,7 @@ const Workspace = () => {
     const [editorTitle, setEditorTitle] = useState('');
     const [editorContent, setEditorContent] = useState('');
     const [isSavingDoc, setIsSavingDoc] = useState(false);
+    const [taskAssignee, setTaskAssignee] = useState('');
 
     useEffect(() => {
         const fetchWorkspaceDetails = async () => {
@@ -196,7 +197,8 @@ const Workspace = () => {
                     title: taskTitle,
                     description: taskDesc,
                     columnId: selectedColId,
-                    priority: taskPriority
+                    priority: taskPriority,
+                      assignedTo: taskAssignee ? [taskAssignee] : []
                 })
             });
             const data = await response.json();
@@ -213,8 +215,9 @@ const Workspace = () => {
                 setTaskTitle('');
                 setTaskDesc('');
                 setTaskPriority('Medium');
+                 setTaskAssignee('');
                 setIsTaskModalOpen(false);
-                toast.success("Task created successfully! 🎯");
+                toast.success("Task created successfully");
             }
         } catch (error) {
             console.error("Error creating task:", error);
@@ -361,7 +364,55 @@ const Workspace = () => {
             console.error("Error loading document:", error);
         }
     };
-      
+          // 3E. Move Task between Columns API request
+    const handleMoveTask = async (task, currentColumnId, direction) => {
+        const colIndex = columns.findIndex(col => col._id === currentColumnId);
+        if (colIndex === -1) return;
+        
+        let newColIndex;
+        if (direction === 'right') {
+            if (colIndex === columns.length - 1) return;
+            newColIndex = colIndex + 1;
+        } else if (direction === 'left') {
+            if (colIndex === 0) return;
+            newColIndex = colIndex - 1;
+        }
+        
+        const newColumnId = columns[newColIndex]._id;
+        const token = localStorage.getItem('token');
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/task/${task._id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ columnId: newColumnId })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                // Update local state
+                setColumns(columns.map((col, idx) => {
+                    if (col._id === currentColumnId) {
+                        return {
+                            ...col,
+                            tasks: col.tasks.filter(t => t._id !== task._id)
+                        };
+                    }
+                    if (idx === newColIndex) {
+                        return {
+                            ...col,
+                            tasks: [...(col.tasks || []), data.task]
+                        };
+                    }
+                    return col;
+                }));
+                toast.success(`Moved task to ${columns[newColIndex].title}!`);
+            }
+        } catch (error) {
+            console.error("Error moving task:", error);
+        }
+    };
     const handleToggleTaskComplete = async (task, currentColumnId) => {
         if (columns.length === 0) return;
         
@@ -640,7 +691,7 @@ const Workspace = () => {
                                                     {/* Dynamic Trash icon button (only visible on hover) */}
                                                     <button 
                                                         onClick={(e) => {
-                                                            e.stopPropagation(); // Stops details click trigger
+                                                            e.stopPropagation(); 
                                                             confirmDeleteTask(task._id, col._id);
                                                         }}
                                                         className="absolute top-3 right-3 text-slate-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity text-xs"
@@ -669,6 +720,56 @@ const Workspace = () => {
                                                     {task.description && (
                                                         <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">{task.description}</p>
                                                     )}
+                                                                                                    {/* Movement & Assignee Footer */}
+                                                <div className="flex justify-between items-center mt-3 pt-2 border-t border-slate-900/60">
+                                                    <div className="flex items-center gap-1.5">
+                                                        {/* Task Date */}
+                                                        <span className="text-[9px] text-slate-500 font-mono">
+                                                            {new Date(task.createdAt).toLocaleDateString()}
+                                                        </span>
+                                                        
+                                                        {/* Assignee initials badge */}
+                                                                                                              {task.assignedTo && task.assignedTo.length > 0 && task.assignedTo[0]?.name && (
+                                                          <div 
+                                                              className="w-4 h-4 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center text-[8px] font-bold"
+                                                              title={`Assigned to: ${task.assignedTo[0]?.name} (${task.assignedTo[0]?.email || 'N/A'})`}
+                                                          >
+                                                              {task.assignedTo[0]?.name?.[0]?.toUpperCase() || 'U'}
+                                                          </div>
+                                                      )}
+                                                    </div>
+                                                    
+                                                    <div className="flex gap-1">
+                                                        {/* Move Left Button */}
+                                                        {columns.indexOf(col) > 0 && (
+                                                            <button 
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleMoveTask(task, col._id, 'left');
+                                                                }}
+                                                                className="w-5 h-5 flex items-center justify-center bg-slate-900 hover:bg-blue-600/30 hover:text-blue-400 border border-slate-800 rounded text-xs transition-colors"
+                                                                title="Move Left"
+                                                            >
+                                                                ←
+                                                            </button>
+                                                        )}
+                                                        {/* Move Right Button */}
+                                                        {columns.indexOf(col) < columns.length - 1 && (
+                                                            <button 
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleMoveTask(task, col._id, 'right');
+                                                                }}
+                                                                className="w-5 h-5 flex items-center justify-center bg-slate-900 hover:bg-blue-600/30 hover:text-blue-400 border border-slate-800 rounded text-xs transition-colors"
+                                                                title="Move Right"
+                                                            >
+                                                                →
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
                                                 </div>
                                             ))
                                         )}
@@ -742,7 +843,7 @@ const Workspace = () => {
                                 value={newBoardName}
                                 onChange={(e) => setNewBoardName(e.target.value)}
                                 className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg px-3 py-2 text-sm text-white focus:outline-none transition-colors"
-                                placeholder="e.g. 📋 Sprint 2 Board"
+                                placeholder="e.g.  Sprint 2 Board"
                                 required
                             />
                         </div>
@@ -846,6 +947,21 @@ const Workspace = () => {
                                 <option value="High">High</option>
                             </select>
                         </div>
+                                             <div>
+                         <label className="text-xs text-slate-400 block mb-1">Assign To (Optional)</label>
+                         <select 
+                             value={taskAssignee}
+                             onChange={(e) => setTaskAssignee(e.target.value)}
+                             className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-lg px-3 py-2 text-sm text-white focus:outline-none transition-colors"
+                         >
+                             <option value="">Unassigned</option>
+                             {workspace?.members?.map(member => (
+                                 <option key={member._id} value={member._id}>
+                                     {member.name} ({member.email})
+                                 </option>
+                             ))}
+                         </select>
+                     </div>
 
                         <div className="flex gap-2 justify-end mt-2">
                             <button 
